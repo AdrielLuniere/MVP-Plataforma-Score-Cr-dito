@@ -1,0 +1,110 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+  AUDITOR
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  VERY_HIGH
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  fullName  String
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  financialProfile FinancialProfile?
+  creditScore      CreditScore?
+  scoreHistory     ScoreHistory[]
+  consents         Consent[]
+  auditLogs        AuditLog[]        @relation("UserAudits")
+
+  @@map("users")
+}
+
+model FinancialProfile {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  income          Decimal  @db.Decimal(10, 2) // Monthly income
+  employmentType  String // e.g., 'Full-time', 'Freelance'
+  contractType    String // e.g., 'Permanent', 'Temporary'
+  monthlyExpenses Decimal  @db.Decimal(10, 2)
+  totalDebt       Decimal  @db.Decimal(12, 2)
+  encryptedData   String? // For storing sensitive raw data encrypted
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("financial_profiles")
+}
+
+model CreditScore {
+  id             String    @id @default(uuid())
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  score          Int // 0-1000
+  riskLevel      RiskLevel
+  lastCalculated DateTime  @default(now())
+  factors        Json // JSON storing positive/negative factors
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@map("credit_scores")
+}
+
+model ScoreHistory {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  score      Int
+  riskLevel  RiskLevel
+  changeDate DateTime  @default(now())
+  reason     String? // Why the score changed
+
+  @@map("score_history")
+}
+
+model Consent {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agreed      Boolean  @default(false)
+  consentType String // e.g., 'GDPR_DATA_PROCESSING', 'MARKETING'
+  version     String // Policy version
+  ipAddress   String?
+  timestamp   DateTime @default(now())
+
+  @@map("consents")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String? // User who performed the action (nullable for system actions)
+  user      User?    @relation("UserAudits", fields: [userId], references: [id])
+  action    String // e.g., 'LOGIN', 'SCORE_UPDATE', 'VIEW_PROFILE'
+  resource  String // Target resource, e.g., 'User:123'
+  details   Json? // Additional context
+  ipAddress String?
+  timestamp DateTime @default(now())
+
+  @@map("audit_logs")
+}
