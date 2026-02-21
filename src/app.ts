@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import { authRouter } from './modules/identity/auth.routes';
+import { financialRouter } from './modules/financial/financial.routes';
 
 dotenv.config();
 
@@ -20,6 +21,7 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/auth', authRouter);
+app.use('/financial', financialRouter);
 
 // Start Server
 if (require.main === module) {
