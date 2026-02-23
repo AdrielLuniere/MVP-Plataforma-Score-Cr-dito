@@ -1,7 +1,12 @@
 import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
+import { encrypt } from '../../shared/utils/encryption';
+import { ConsentService } from '../gdpr/consent.service';
+import { CreditScoreService } from '../credit-score/credit-score.service';
 
 const prisma = new PrismaClient();
+const consentService = new ConsentService();
+const creditScoreService = new CreditScoreService();
 
 export const EmploymentTypeEnum = z.enum([
   'FULL_TIME',
@@ -31,7 +36,16 @@ export type CreateFinancialProfileDTO = z.infer<typeof financialProfileSchema>;
 
 export class FinancialService {
   async upsertProfile(userId: string, data: CreateFinancialProfileDTO) {
+    const hasConsent = await consentService.hasConsent(userId);
+    if (!hasConsent) {
+      throw new Error('GDPR consent required to process financial data. Please visit /gdpr/consent/agree');
+    }
+
     const validatedData = financialProfileSchema.parse(data);
+
+    // Encrypt sensitive data for storage
+    const sensitiveJson = JSON.stringify(validatedData);
+    const encryptedData = encrypt(sensitiveJson);
 
     const profile = await prisma.financialProfile.upsert({
       where: { userId },
@@ -41,6 +55,7 @@ export class FinancialService {
         contractType: validatedData.contractType,
         monthlyExpenses: validatedData.monthlyExpenses,
         totalDebt: validatedData.totalDebt,
+        encryptedData: encryptedData,
       },
       create: {
         userId,
@@ -49,6 +64,7 @@ export class FinancialService {
         contractType: validatedData.contractType,
         monthlyExpenses: validatedData.monthlyExpenses,
         totalDebt: validatedData.totalDebt,
+        encryptedData: encryptedData,
       },
     });
 
@@ -61,6 +77,9 @@ export class FinancialService {
         details: { timestamp: new Date().toISOString() },
       },
     });
+
+    // Recalcular Score automaticamente
+    await creditScoreService.calculateAndSave(userId);
 
     return profile;
   }

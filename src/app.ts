@@ -4,6 +4,9 @@ import helmet from 'helmet';
 import dotenv from 'dotenv';
 import { authRouter } from './modules/identity/auth.routes';
 import { financialRouter } from './modules/financial/financial.routes';
+import { consentRouter } from './modules/gdpr/consent.routes';
+import { privacyRouter } from './modules/gdpr/privacy.routes';
+import { creditScoreRouter } from './modules/credit-score/credit-score.routes';
 
 dotenv.config();
 
@@ -22,6 +25,9 @@ app.get('/health', (req, res) => {
 
 app.use('/auth', authRouter);
 app.use('/financial', financialRouter);
+app.use('/gdpr/consent', consentRouter);
+app.use('/gdpr/privacy', privacyRouter);
+app.use('/credit-score', creditScoreRouter);
 
 // Start Server
 if (require.main === module) {
