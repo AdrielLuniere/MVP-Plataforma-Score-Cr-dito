@@ -108,3 +108,11 @@ model AuditLog {
 
   @@map("audit_logs")
 }
+model SystemConfig {
+  id    String @id @default(uuid())
+  key   String @unique // e.g., 'SCORING_WEIGHTS'
+  value Json   // Dynamic configuration values
+  updatedAt DateTime @updatedAt
+
+  @@map("system_configs")
+}

@@ -7,6 +7,7 @@ import { financialRouter } from './modules/financial/financial.routes';
 import { consentRouter } from './modules/gdpr/consent.routes';
 import { privacyRouter } from './modules/gdpr/privacy.routes';
 import { creditScoreRouter } from './modules/credit-score/credit-score.routes';
+import { adminRouter } from './modules/admin/admin.routes';
 
 dotenv.config();
 
@@ -28,6 +29,7 @@ app.use('/financial', financialRouter);
 app.use('/gdpr/consent', consentRouter);
 app.use('/gdpr/privacy', privacyRouter);
 app.use('/credit-score', creditScoreRouter);
+app.use('/admin', adminRouter);
 
 // Start Server
 if (require.main === module) {

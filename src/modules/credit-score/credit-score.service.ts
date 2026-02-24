@@ -12,7 +12,7 @@ export class CreditScoreService {
       throw new Error('Financial profile not found. Complete profile before scoring.');
     }
 
-    const { score, factors } = this.calculateScore(profile);
+    const { score, factors } = await this.calculateScore(profile);
     const riskLevel = this.determineRiskLevel(score);
 
     const creditScore = await prisma.creditScore.upsert({
@@ -58,62 +58,61 @@ export class CreditScoreService {
     return { ...score, history };
   }
 
-  public calculateScore(profile: any): { score: number; factors: any } {
+  public async calculateScore(profile: any): Promise<{ score: number; factors: any }> {
     let finalScore = 0;
     const factors: { positive: string[]; negative: string[] } = {
       positive: [],
       negative: [],
     };
 
-    // 1. Renda Líquida (40% - 400 pts)
+    // Buscar pesos dinâmicos ou usar padrão
+    const config = await prisma.systemConfig.findUnique({
+      where: { key: 'SCORING_WEIGHTS' },
+    });
+    
+    const weights: any = config?.value || {
+      income: { high: 400, medium: 250, low: 100 },
+      debt: { low: 300, medium: 150, critical: 0 },
+      contract: { PERMANENT: 200, INDETERMINATE: 150, TEMPORARY: 50 },
+      occupation: { FULL_TIME: 100, SELF_EMPLOYED: 70, FREELANCE: 50 }
+    };
+
+    // 1. Renda Líquida (Peso dinâmico)
     const netIncome = Number(profile.income) - Number(profile.monthlyExpenses);
     if (netIncome > 5000) {
-      finalScore += 400;
+      finalScore += weights.income.high;
       factors.positive.push('High net monthly income');
     } else if (netIncome > 2000) {
-      finalScore += 250;
+      finalScore += weights.income.medium;
       factors.positive.push('Stable net monthly income');
     } else if (netIncome > 0) {
-      finalScore += 100;
+      finalScore += weights.income.low;
     } else {
       factors.negative.push('Negative or very low net income');
     }
 
-    // 2. Relação Dívida/Renda (30% - 300 pts)
+    // 2. Relação Dívida/Renda
     const debtRatio = Number(profile.totalDebt) / (Number(profile.income) || 1);
     if (debtRatio < 0.1) {
-      finalScore += 300;
+      finalScore += weights.debt.low;
       factors.positive.push('Very low debt-to-income ratio');
     } else if (debtRatio < 0.5) {
-      finalScore += 150;
+      finalScore += weights.debt.medium;
       factors.positive.push('Manageable debt levels');
     } else if (debtRatio > 1) {
       factors.negative.push('Total debt exceeds annual income');
     }
 
-    // 3. Estabilidade de Emprego (20% - 200 pts)
-    const contractWeights: Record<string, number> = {
-      'PERMANENT': 200,
-      'INDETERMINATE': 150,
-      'TEMPORARY': 50,
-      'NOT_APPLICABLE': 0,
-    };
-    const cWeight = contractWeights[profile.contractType] || 0;
+    // 3. Estabilidade de Emprego
+    const cWeight = weights.contract[profile.contractType] || 0;
     finalScore += cWeight;
     
     if (profile.contractType === 'PERMANENT') factors.positive.push('Employment stability (Permanent contract)');
-    else if (profile.contractType === 'TEMPORARY') factors.negative.push('Temporary contract contract reduces stability score');
+    else if (profile.contractType === 'TEMPORARY') factors.negative.push('Temporary contract reduces stability score');
 
-    // 4. Tipo de Ocupação (10% - 100 pts)
-    const occupationWeights: Record<string, number> = {
-      'FULL_TIME': 100,
-      'SELF_EMPLOYED': 70,
-      'FREELANCE': 50,
-      'PART_TIME': 40,
-      'RETIRED': 30,
-      'UNEMPLOYED': 0,
-    };
-    finalScore += occupationWeights[profile.employmentType] || 0;
+    // 4. Tipo de Ocupação
+    const oWeight = weights.occupation[profile.employmentType] || 0;
+    finalScore += oWeight;
     
     if (profile.employmentType === 'UNEMPLOYED') factors.negative.push('Current unemployment status');
 

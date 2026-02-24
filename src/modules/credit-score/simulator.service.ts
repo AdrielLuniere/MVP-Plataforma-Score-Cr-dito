@@ -38,6 +38,6 @@ export class CreditScoreSimulator {
     // Use internal calculateScore from CreditScoreService
     // Since calculateScore is private, we'll need to make it public or use it here
     // For now, I'll use the service instance if I make it accessible
-    return this.creditScoreService.calculateScore(simulatedProfile);
+    return await this.creditScoreService.calculateScore(simulatedProfile);
   }
 }
