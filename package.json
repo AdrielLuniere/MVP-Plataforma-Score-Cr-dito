@@ -1,4 +1,13 @@
 {
+  "name": "mvp-plataforma-score",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "nodemon src/app.ts",
+    "build": "tsc",
+    "start": "node dist/app.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev"
+  },
   "dependencies": {
     "@prisma/client": "^6.2.1",
     "bcryptjs": "^3.0.3",
