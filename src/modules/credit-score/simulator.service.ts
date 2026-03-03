@@ -21,18 +21,23 @@ export class CreditScoreSimulator {
       where: { userId },
     });
 
-    if (!currentProfile) {
-      throw new Error('Profile not found for simulation');
-    }
+    // We allow simulation even if profile doesn't exist by using defaults
+    const baseProfile = currentProfile || {
+      income: 0,
+      totalDebt: 0,
+      monthlyExpenses: 0,
+      contractType: 'TEMPORARY',
+      employmentType: 'FREELANCE'
+    };
 
-    // Merge actual data with simulated changes
+    // Merge actual data or defaults with simulated changes
     const simulatedProfile = {
-      ...currentProfile,
-      income: changes.income !== undefined ? changes.income : Number(currentProfile.income),
-      totalDebt: changes.totalDebt !== undefined ? changes.totalDebt : Number(currentProfile.totalDebt),
-      monthlyExpenses: changes.monthlyExpenses !== undefined ? changes.monthlyExpenses : Number(currentProfile.monthlyExpenses),
-      contractType: changes.contractType !== undefined ? changes.contractType : currentProfile.contractType,
-      employmentType: changes.employmentType !== undefined ? changes.employmentType : currentProfile.employmentType,
+      ...baseProfile,
+      income: changes.income !== undefined ? changes.income : Number(baseProfile.income),
+      totalDebt: changes.totalDebt !== undefined ? changes.totalDebt : Number(baseProfile.totalDebt),
+      monthlyExpenses: changes.monthlyExpenses !== undefined ? changes.monthlyExpenses : Number(baseProfile.monthlyExpenses),
+      contractType: changes.contractType !== undefined ? changes.contractType : baseProfile.contractType,
+      employmentType: changes.employmentType !== undefined ? changes.employmentType : baseProfile.employmentType,
     };
 
     // Use internal calculateScore from CreditScoreService
